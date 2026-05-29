@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý Công Việc</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Auth Section (Sign Up / Login) -->
+    <div id="auth-section" class="auth-container">
+        <div class="auth-card">
+            <h1>Quản Lý Công Việc</h1>
+            
+            <!-- Login Form -->
+            <div id="login-form" class="form-container active">
+                <h2>Đăng Nhập</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="login-email">Email:</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Mật khẩu:</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Đăng Nhập</button>
+                </form>
+                <p>Chưa có tài khoản? <button type="button" class="link-btn" id="to-signup-btn">Đăng Ký</button></p>
+            </div>
+
+            <!-- Sign Up Form -->
+            <div id="signup-form" class="form-container">
+                <h2>Đăng Ký</h2>
+                <form id="signupForm">
+                    <div class="form-group">
+                        <label for="signup-name">Họ Tên:</label>
+                        <input type="text" id="signup-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-email">Email:</label>
+                        <input type="email" id="signup-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">Mật khẩu:</label>
+                        <input type="password" id="signup-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-confirm-password">Xác nhận mật khẩu:</label>
+                        <input type="password" id="signup-confirm-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Đăng Ký</button>
+                </form>
+                <p>Đã có tài khoản? <button type="button" class="link-btn" id="to-login-btn">Đăng Nhập</button></p>
+            </div>
+
+            <div id="auth-message" class="message"></div>
+        </div>
+    </div>
+
+    <!-- Main App Section (Tasks Management) -->
+    <div id="app-section" class="app-container hidden">
+        <header>
+            <h1>📋 Quản Lý Công Việc</h1>
+            <div class="header-actions">
+                <span id="user-info">Xin chào, <strong id="username">User</strong></span>
+                <button id="logout-btn" class="btn btn-secondary">Đăng Xuất</button>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Add Task Section -->
+            <section class="add-task-section">
+                <h2>Thêm Công Việc Mới</h2>
+                <form id="add-task-form">
+                    <div class="form-row">
+                        <input type="text" id="task-title" placeholder="Tiêu đề công việc" required>
+                        <textarea id="task-description" placeholder="Mô tả chi tiết" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <input type="date" id="task-deadline" required>
+                        <select id="task-priority">
+                            <option value="low">Thấp</option>
+                            <option value="medium" selected>Trung bình</option>
+                            <option value="high">Cao</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Thêm Công Việc</button>
+                </form>
+                <div id="add-task-message" class="message"></div>
+            </section>
+
+            <!-- Filter Section -->
+            <section class="filter-section">
+                <h2>Bộ Lọc</h2>
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label>Ưu tiên:</label>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="priority" data-value="all">Tất cả</button>
+                            <button class="filter-btn" data-filter="priority" data-value="high">Cao</button>
+                            <button class="filter-btn" data-filter="priority" data-value="medium">Trung bình</button>
+                            <button class="filter-btn" data-filter="priority" data-value="low">Thấp</button>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Trạng thái:</label>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="status" data-value="all">Tất cả</button>
+                            <button class="filter-btn" data-filter="status" data-value="pending">Chưa làm</button>
+                            <button class="filter-btn" data-filter="status" data-value="completed">Hoàn thành</button>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Sắp tới:</label>
+                        <input type="date" id="filter-deadline" placeholder="Lọc theo ngày">
+                        <button id="clear-deadline-btn" class="btn btn-secondary">Xóa</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tasks List Section -->
+            <section class="tasks-section">
+                <h2>Danh Sách Công Việc</h2>
+                <div id="tasks-list" class="tasks-list">
+                    <p class="empty-message">Không có công việc nào. Hãy thêm một công việc mới!</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Task Item Template (Hidden) -->
+    <template id="task-template">
+        <div class="task-item" data-task-id="">
+            <div class="task-header">
+                <div class="task-checkbox">
+                    <input type="checkbox" class="task-status-checkbox">
+                </div>
+                <div class="task-info">
+                    <h3 class="task-title"></h3>
+                    <p class="task-description"></p>
+                </div>
+                <div class="task-meta">
+                    <span class="task-priority"></span>
+                    <span class="task-deadline"></span>
+                </div>
+            </div>
+            <div class="task-actions">
+                <button class="btn btn-edit" title="Chỉnh sửa">✏️</button>
+                <button class="btn btn-delete" title="Xóa">🗑️</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Chỉnh Sửa Công Việc</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="edit-task-form">
+                <div class="form-group">
+                    <label for="edit-title">Tiêu đề:</label>
+                    <input type="text" id="edit-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-description">Mô tả:</label>
+                    <textarea id="edit-description" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-deadline">Ngày đến hạn:</label>
+                        <input type="date" id="edit-deadline" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-priority">Ưu tiên:</label>
+                        <select id="edit-priority">
+                            <option value="low">Thấp</option>
+                            <option value="medium">Trung bình</option>
+                            <option value="high">Cao</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Lưu Thay Đổi</button>
+                    <button type="button" class="btn btn-secondary modal-cancel">Hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

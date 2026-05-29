@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Công Việc</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-body">
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="header-left">
+                <h1>📋 Quản Lý Công Việc</h1>
+            </div>
+            <div class="header-right">
+                <span id="user-info">Xin chào, <strong id="username">User</strong></span>
+                <button id="logout-btn" class="btn btn-secondary">Đăng Xuất</button>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Add Task Section -->
+            <section class="add-task-section card">
+                <h2>✨ Thêm Công Việc Mới</h2>
+                <form id="add-task-form">
+                    <div class="form-group">
+                        <label for="task-title">Tiêu đề:</label>
+                        <input type="text" id="task-title" placeholder="Nhập tiêu đề công việc" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="task-description">Mô tả:</label>
+                        <textarea id="task-description" placeholder="Mô tả chi tiết (tùy chọn)" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="task-deadline">Ngày đến hạn:</label>
+                            <input type="date" id="task-deadline" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-priority">Mức ưu tiên:</label>
+                            <select id="task-priority">
+                                <option value="low">🟢 Thấp</option>
+                                <option value="medium" selected>🟡 Trung bình</option>
+                                <option value="high">🔴 Cao</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Thêm Công Việc</button>
+                </form>
+                <div id="add-task-message" class="message"></div>
+            </section>
+
+            <!-- Filter Section -->
+            <section class="filter-section card">
+                <h2>🔍 Bộ Lọc</h2>
+                <div class="filter-controls">
+                    <!-- Priority Filter -->
+                    <div class="filter-group">
+                        <label>Lọc theo ưu tiên:</label>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="priority" data-value="all">Tất cả</button>
+                            <button class="filter-btn" data-filter="priority" data-value="high">🔴 Cao</button>
+                            <button class="filter-btn" data-filter="priority" data-value="medium">🟡 Trung bình</button>
+                            <button class="filter-btn" data-filter="priority" data-value="low">🟢 Thấp</button>
+                        </div>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="filter-group">
+                        <label>Lọc theo trạng thái:</label>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="status" data-value="all">Tất cả</button>
+                            <button class="filter-btn" data-filter="status" data-value="pending">⏳ Chưa làm</button>
+                            <button class="filter-btn" data-filter="status" data-value="completed">✅ Hoàn thành</button>
+                        </div>
+                    </div>
+
+                    <!-- Deadline Filter -->
+                    <div class="filter-group">
+                        <label>Lọc theo ngày đến hạn:</label>
+                        <div class="filter-input-group">
+                            <input type="date" id="filter-deadline" placeholder="Chọn ngày">
+                            <button id="clear-deadline-btn" class="btn btn-secondary">Xóa</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tasks List Section -->
+            <section class="tasks-section card">
+                <h2>📊 Danh Sách Công Việc</h2>
+                <div id="tasks-stats" class="tasks-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Tổng:</span>
+                        <span class="stat-value" id="total-count">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Chưa làm:</span>
+                        <span class="stat-value" id="pending-count">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Hoàn thành:</span>
+                        <span class="stat-value" id="completed-count">0</span>
+                    </div>
+                </div>
+                <div id="tasks-list" class="tasks-list">
+                    <p class="empty-message">Không có công việc nào. Hãy thêm một công việc mới!</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Task Item Template (Hidden) -->
+    <template id="task-template">
+        <div class="task-item" data-task-id="">
+            <div class="task-main">
+                <div class="task-checkbox">
+                    <input type="checkbox" class="task-status-checkbox" title="Đánh dấu hoàn thành">
+                </div>
+                <div class="task-content">
+                    <h3 class="task-title"></h3>
+                    <p class="task-description"></p>
+                    <div class="task-meta">
+                        <span class="task-priority"></span>
+                        <span class="task-deadline"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="task-actions">
+                <button class="btn btn-edit" title="Chỉnh sửa">✏️ Sửa</button>
+                <button class="btn btn-delete" title="Xóa">🗑️ Xóa</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ Chỉnh Sửa Công Việc</h2>
+                <button type="button" class="modal-close" title="Đóng">&times;</button>
+            </div>
+            <form id="edit-task-form">
+                <div class="form-group">
+                    <label for="edit-title">Tiêu đề:</label>
+                    <input type="text" id="edit-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-description">Mô tả:</label>
+                    <textarea id="edit-description" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-deadline">Ngày đến hạn:</label>
+                        <input type="date" id="edit-deadline" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-priority">Mức ưu tiên:</label>
+                        <select id="edit-priority">
+                            <option value="low">🟢 Thấp</option>
+                            <option value="medium">🟡 Trung bình</option>
+                            <option value="high">🔴 Cao</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">💾 Lưu Thay Đổi</button>
+                    <button type="button" class="btn btn-secondary modal-cancel">❌ Hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
