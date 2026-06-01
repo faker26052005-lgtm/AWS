@@ -6,7 +6,8 @@ const cognitoAuthConfig = {
     client_id: "609qe7sdfg6ke4h02qifum0upq",
     // Chú ý: File callback xử lý token bắt buộc phải là trang tasks.html 
     // vì Cognito sau khi login xong sẽ đá user về đây kèm theo mã ?code= trên URL
-    redirect_uri: "http://localhost:8000/tasks.html", 
+    redirect_uri: "https://dwarnvuzl14qe.cloudfront.net/tasks.html", 
+    post_logout_redirect_uri: "https://dwarnvuzl14qe.cloudfront.net/auth.html",
     response_type: "code",
     scope: "email openid phone profile"
 };
@@ -24,7 +25,7 @@ if (typeof oidc !== 'undefined') {
 // Hàm xử lý Đăng xuất điều hướng thẳng lên Hosted UI của Cloud
 async function signOutRedirect() {
     const clientId = "609qe7sdfg6ke4h02qifum0upq";
-    const logoutUri = "http://localhost:8000/auth.html"; // Nơi quay về sau khi logout thành công
+    const logoutUri = "https://dwarnvuzl14qe.cloudfront.net/auth.html"; // Nơi quay về sau khi logout thành công
     const cognitoDomain = "https://ap-southeast-1l1tnlf9vp.auth.ap-southeast-1.amazoncognito.com";
     
     if (userManager) {
