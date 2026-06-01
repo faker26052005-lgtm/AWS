@@ -1,4 +1,22 @@
-// ===== Authentication Logic =====
+// ===== Authentication Logic with AWS Cognito =====
+
+// Ensure `Auth` global exists (CDN bundles may expose Amplify under different globals)
+if (typeof Auth === 'undefined') {
+    if (typeof Amplify !== 'undefined' && Amplify.Auth) {
+        window.Auth = Amplify.Auth;
+    } else if (typeof window.aws_amplify !== 'undefined' && window.aws_amplify.Auth) {
+        window.Auth = window.aws_amplify.Auth;
+    }
+}
+
+// Enable Amplify debug logging when available to help diagnose auth issues
+if (typeof Amplify !== 'undefined' && Amplify.Logger) {
+    try {
+        Amplify.Logger.LOG_LEVEL = 'DEBUG';
+    } catch (e) {
+        // ignore if setting log level isn't supported in this build
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     initAuthListeners();
@@ -15,12 +33,19 @@ function initAuthListeners() {
     document.getElementById('signupForm').addEventListener('submit', handleSignup);
 }
 
-function checkAuthOnLoad() {
-    const currentUser = getCurrentUser();
-    
-    if (currentUser) {
-        // User already logged in, redirect to app
-        redirectToApp();
+/**
+ * Kiểm tra xem user đã đăng nhập chưa khi load trang
+ */
+async function checkAuthOnLoad() {
+    try {
+        const isSignedIn = await isUserSignedIn();
+        
+        if (isSignedIn) {
+            // User đã đăng nhập, chuyển hướng đến app
+            redirectToApp();
+        }
+    } catch (error) {
+        console.error('Error checking auth status:', error);
     }
 }
 
@@ -38,43 +63,48 @@ function switchToLogin(event) {
     clearAuthMessage();
 }
 
-function handleLogin(event) {
+/**
+ * Xử lý đăng nhập qua AWS Cognito
+ */
+async function handleLogin(event) {
     event.preventDefault();
-
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
+    const loginButton = event.target.querySelector('button[type="submit"]');
 
-    // Validation
-    if (!email || !password) {
-        showAuthMessage('Vui lòng điền email và mật khẩu', 'error');
-        return;
-    }
-
-    // Check credentials
-    const users = getUsersFromStorage();
-    const user = users.find(u => u.email === email && u.password === btoa(password));
-
-    if (!user) {
-        showAuthMessage('Email hoặc mật khẩu không đúng', 'error');
-        return;
-    }
-
-    // Login success
-    showAuthMessage('Đăng nhập thành công! Đang chuyển hướng...', 'success');
-    saveCurrentUser(user);
+    setButtonLoading(loginButton, 'Đăng Nhập');
     
-    setTimeout(() => {
-        redirectToApp();
-    }, 1000);
+    const authDetails = new AmazonCognitoIdentity.AuthenticationDetails({ Username: email, Password: password });
+    const cognitoUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
+
+    cognitoUser.authenticateUser(authDetails, {
+        onSuccess: function(result) {
+            unsetButtonLoading(loginButton);
+            showAuthMessage('✅ Đăng nhập thành công! Đang chuyển hướng...', 'success');
+            
+            localStorage.setItem('aws_access_token', result.getAccessToken().getJwtToken());
+            localStorage.setItem('app_current_user', JSON.stringify({ name: email, email: email }));
+
+            setTimeout(() => { window.location.href = AWS_CONFIG.cognito.redirectSignIn; }, 1000);
+        },
+        onFailure: function(err) {
+            unsetButtonLoading(loginButton);
+            showAuthMessage(`❌ Đăng nhập thất bại: ${err.message}`, 'error');
+        }
+    });
 }
 
-function handleSignup(event) {
+/**
+ * Xử lý đăng ký qua AWS Cognito
+ */
+async function handleSignup(event) {
     event.preventDefault();
 
     const name = document.getElementById('signup-name').value.trim();
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
     const confirmPassword = document.getElementById('signup-confirm-password').value;
+    const signupButton = event.target.querySelector('button[type="submit"]');
 
     // Validation
     if (!name || !email || !password || !confirmPassword) {
@@ -92,35 +122,71 @@ function handleSignup(event) {
         return;
     }
 
-    if (password.length < 6) {
-        showAuthMessage('Mật khẩu phải có ít nhất 6 ký tự', 'error');
+    if (password.length < 8) {
+        showAuthMessage('Mật khẩu phải có ít nhất 8 ký tự', 'error');
         return;
     }
 
-    // Check if email already exists
-    const users = getUsersFromStorage();
-    if (users.find(u => u.email === email)) {
-        showAuthMessage('Email này đã được đăng ký', 'error');
+    // Kiểm tra độ mạnh mật khẩu (phải có số, chữ hoa, chữ thường)
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+        showAuthMessage('Mật khẩu phải chứa chữ hoa, chữ thường và số', 'error');
         return;
     }
 
-    // Create new user
-    const newUser = {
-        id: generateId(),
-        name,
-        email,
-        password: btoa(password)
-    };
+    try {
+        if (typeof isAuthConfigured === 'function' && !isAuthConfigured()) {
+            showAuthMessage('❌ Authentication not configured. Vui lòng kiểm tra cấu hình.', 'error');
+            return;
+        }
+        // Bật loading state
+        setButtonLoading(signupButton, 'Đăng Ký');
+        showAuthMessage('Đang tạo tài khoản...', 'info');
 
-    users.push(newUser);
-    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+        // Gọi Cognito sign up
+        const { userSub } = await Auth.signUp({
+            username: email,
+            password: password,
+            attributes: {
+                email: email,
+                name: name,
+                given_name: name.split(' ')[0] || name,
+                family_name: name.split(' ').slice(1).join(' ') || ''
+            },
+            validationData: []
+        });
 
-    showAuthMessage('Đăng ký thành công! Đang chuyển hướng...', 'success');
-    
-    setTimeout(() => {
-        saveCurrentUser(newUser);
-        redirectToApp();
-    }, 1500);
+        showAuthMessage('✅ Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.', 'success');
+        
+        // Chuyển sang form xác nhận (nếu cần)
+        setTimeout(() => {
+            document.getElementById('signup-form').classList.remove('active');
+            document.getElementById('login-form').classList.add('active');
+            clearAuthMessage();
+        }, 2000);
+
+    } catch (error) {
+        console.error('Signup error:', error);
+
+        // Xử lý các lỗi Cognito khác nhau
+        const code = error.code || error.name || '';
+        const message = error.message || String(error);
+
+        if (code === 'UsernameExistsException') {
+            showAuthMessage('❌ Email này đã được đăng ký', 'error');
+        } else if (code === 'InvalidPasswordException') {
+            showAuthMessage('❌ Mật khẩu không đủ mạnh. Cần có chữ hoa, chữ thường và số.', 'error');
+        } else if (code) {
+            showAuthMessage(`❌ Lỗi đăng ký: ${code} - ${message}`, 'error');
+        } else {
+            showAuthMessage(`❌ Lỗi đăng ký: ${message}`, 'error');
+        }
+
+        // For debugging: log full error details
+        console.debug('Signup error details:', { code, message, error });
+    } finally {
+        // Tắt loading state
+        unsetButtonLoading(signupButton);
+    }
 }
 
 function showAuthMessage(message, type) {
